@@ -78,9 +78,7 @@ public class PushNotificationsPlugin extends Plugin {
     @PluginMethod
     public void checkPermissions(PluginCall call) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            JSObject permissionsResultJSON = new JSObject();
-            permissionsResultJSON.put("receive", "granted");
-            call.resolve(permissionsResultJSON);
+            AreEnabledNotificationsBeforeAndroid13(call);
         } else {
             super.checkPermissions(call);
         }
@@ -89,12 +87,26 @@ public class PushNotificationsPlugin extends Plugin {
     @PluginMethod
     public void requestPermissions(PluginCall call) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || getPermissionState(PUSH_NOTIFICATIONS) == PermissionState.GRANTED) {
-            JSObject permissionsResultJSON = new JSObject();
-            permissionsResultJSON.put("receive", "granted");
-            call.resolve(permissionsResultJSON);
+            AreEnabledNotificationsBeforeAndroid13(call);
         } else {
             requestPermissionForAlias(PUSH_NOTIFICATIONS, call, "permissionsCallback");
         }
+    }
+
+    private void AreEnabledNotificationsBeforeAndroid13(PluginCall call) {
+        JSObject permissionsResultJSON = new JSObject();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!notificationManager.areNotificationsEnabled()) {
+                permissionsResultJSON.put("receive", "denied");
+            } else {
+                permissionsResultJSON.put("receive", "granted");
+            }
+        } else {
+            permissionsResultJSON.put("receive", "granted");
+        }
+
+        call.resolve(permissionsResultJSON);
     }
 
     @PluginMethod
