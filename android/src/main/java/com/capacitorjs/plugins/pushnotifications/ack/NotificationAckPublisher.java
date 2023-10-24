@@ -1,4 +1,4 @@
-package com.capacitorjs.plugins.pushnotifications;
+package com.capacitorjs.plugins.pushnotifications.ack;
 
 import android.util.Log;
 
@@ -6,23 +6,23 @@ import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class AckPublisher {
+public class NotificationAckPublisher {
 
     private final String apiUrl;
-    private final String acknoledgePath = "Intervention/Acknowledge";
+    private final String acknowledgePath = "Intervention/Acknowledge";
 
-    public AckPublisher(String apiUrl) {
+    public NotificationAckPublisher(String apiUrl) {
         this.apiUrl = apiUrl;
     }
 
     public boolean post(NotificationLogItem logItem, int timeoutMillis) {
-        String targetURL = apiUrl + acknoledgePath;
+        String targetURL = apiUrl + acknowledgePath;
         boolean sent = false;
         try {
             if (logItem != null) {
                 String requestBody = logItem.toJson();
 
-                Log.w("AckPublisher", "posting " + requestBody + " to " + targetURL + " ...");
+                Log.w("NotificationAckPublisher", "posting " + requestBody + " to " + targetURL + " ...");
 
                 URL url = new URL(targetURL);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -42,17 +42,17 @@ public class AckPublisher {
                 if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_NO_CONTENT) {
                     sent = true;
                 } else {
-                    Log.w("AckPublisher", "postNotification ack bad response=" + responseCode);
+                    Log.w("NotificationAckPublisher", "postNotification ack bad response=" + responseCode);
                 }
                 connection.disconnect();
             }
         } catch (Exception ex) {
-            Log.e("AckPublisher", "postAcknowledge : " + ex.getMessage());
+            Log.e("NotificationAckPublisher", "postAcknowledge : " + ex.getMessage());
         }
         if (sent) {
-            Log.w("AckPublisher", "postNotification ack successfull");
+            Log.w("NotificationAckPublisher", "postNotification ack successfull");
         } else {
-            Log.w("AckPublisher", "postNotification not sent");
+            Log.w("NotificationAckPublisher", "postNotification not sent");
         }
         return sent;
     }

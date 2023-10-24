@@ -1,14 +1,14 @@
-package com.capacitorjs.plugins.pushnotifications;
+package com.capacitorjs.plugins.pushnotifications.ack;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class NotificationLogItem {
-    String timeStamp;
-    String deviceId;
-    String notificationLogId;
-    String interventionId;
-    String origin;
+    public String timeStamp;
+    public String deviceId;
+    public String notificationLogId;
+    public String interventionId;
+    public String origin;
 
     public NotificationLogItem(String timeStamp, String deviceId, String notificationLogId, String interventionId, String origin) {
         this.timeStamp = timeStamp;

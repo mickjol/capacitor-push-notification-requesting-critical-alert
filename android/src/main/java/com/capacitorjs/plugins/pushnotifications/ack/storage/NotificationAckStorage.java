@@ -1,4 +1,4 @@
-package com.capacitorjs.plugins.pushnotifications;
+package com.capacitorjs.plugins.pushnotifications.ack.storage;
 
 import static java.lang.System.currentTimeMillis;
 
@@ -7,13 +7,15 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.util.Log;
 
+import com.capacitorjs.plugins.pushnotifications.ack.NotificationLogItem;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class AckStorage {
+public class NotificationAckStorage {
     private ContentResolver contentResolver;
 
-    public AckStorage(ContentResolver contentResolver) {
+    public NotificationAckStorage(ContentResolver contentResolver) {
         this.contentResolver = contentResolver;
     }
 
@@ -23,7 +25,7 @@ public class AckStorage {
 
             contentResolver.insert(NotificationContentProviderDefinition.CONTENT_URI, createContentValues(key, new NotificationLogItem(key, deviceId, notificationLogId, interventionId, origin)));
         } catch (Exception ex) {
-            Log.e("AckStorage", "logNotification : " + ex.getMessage());
+            Log.e("NotificationAckStorage", "logNotification : " + ex.getMessage());
         }
     }
 

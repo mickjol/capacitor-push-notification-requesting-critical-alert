@@ -1,7 +1,9 @@
-package com.capacitorjs.plugins.pushnotifications;
+package com.capacitorjs.plugins.pushnotifications.ack;
 
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.google.firebase.messaging.Constants;
@@ -35,5 +37,4 @@ public class NotificationExtractor {
         }
         return null;
     }
-
 }

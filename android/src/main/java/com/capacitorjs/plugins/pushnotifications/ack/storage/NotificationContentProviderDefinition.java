@@ -1,4 +1,4 @@
-package com.capacitorjs.plugins.pushnotifications;
+package com.capacitorjs.plugins.pushnotifications.ack.storage;
 
 import android.net.Uri;
 

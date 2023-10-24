@@ -1,4 +1,4 @@
-package com.capacitorjs.plugins.pushnotifications;
+package com.capacitorjs.plugins.pushnotifications.ack.storage;
 
 import android.content.ContentProvider;
 import android.content.ContentUris;
@@ -109,7 +109,7 @@ public class NotificationContentProvider extends ContentProvider {
 
     static final String DATABASE_NAME = "ContentProviderDB";
     static final String TABLE_NAME = "keys";
-    static final int DATABASE_VERSION = 3;
+    static final int DATABASE_VERSION = 1;
     static final String CREATE_DB_TABLE = " CREATE TABLE " + TABLE_NAME
             + " (" + NotificationContentProviderDefinition.COLUMN_KEY + " TEXT PRIMARY KEY, "
             + " " + NotificationContentProviderDefinition.COLUMN_DEVICEID + " TEXT,"
