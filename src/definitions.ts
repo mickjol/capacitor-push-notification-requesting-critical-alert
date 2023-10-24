@@ -24,6 +24,10 @@ declare module '@capacitor/cli' {
        * @example ["badge", "sound", "alert"]
        */
       presentationOptions: PresentationOption[];
+      /**
+       *Server api url
+      **/
+      apiUrl?: string;
     };
   }
 }
