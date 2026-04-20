@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [6.21.0](https://github.com/CAUCA-9-1-1/capacitor-push-notification/compare/v6.20.0...v6.21.0) (2024-06-20)
+
+### Features
+
+- Save acknowledge notification on IOS to send it later if needed
+
+## [6.20.0](https://github.com/CAUCA-9-1-1/capacitor-push-notification/compare/v6.20.0) (2024-06-20)
+
+### Features
+
+- Ask iOS permission for "Critical Alert"
+- Validate OS permission before Android 13
+- Send acknowledge to remote server on Android
+- Create notification when iOS app received background push notifications and app is inactive
+- Send acknowledge to remote server on IOS
+
 ## [8.0.3](https://github.com/ionic-team/capacitor-plugins/compare/@capacitor/push-notifications@8.0.2...@capacitor/push-notifications@8.0.3) (2026-03-25)
 
 **Note:** Version bump only for package @capacitor/push-notifications

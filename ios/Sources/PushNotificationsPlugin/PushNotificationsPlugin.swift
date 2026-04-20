@@ -30,21 +30,28 @@ public class PushNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "deleteChannel", returnType: CAPPluginReturnPromise)
     ]
     private let notificationDelegateHandler = PushNotificationsHandler()
+    private let acknowledgeService = AcknowledgeService()
     private var appDelegateRegistrationCalled: Bool = false
 
     override public func load() {
         self.bridge?.notificationRouter.pushNotificationHandler = self.notificationDelegateHandler
         self.notificationDelegateHandler.plugin = self
+        self.acknowledgeService.setContext(self.getConfig().getString("apiUrl"))
 
         NotificationCenter.default.addObserver(self,
-                                               selector: #selector(self.didRegisterForRemoteNotificationsWithDeviceToken(notification:)),
-                                               name: .capacitorDidRegisterForRemoteNotifications,
-                                               object: nil)
+                                            selector: #selector(self.onBackgroundNotification(notification:)),
+                                            name: NSNotification.Name("silentNotificationReceived"),
+                                            object: nil)
 
         NotificationCenter.default.addObserver(self,
-                                               selector: #selector(self.didFailToRegisterForRemoteNotificationsWithError(notification:)),
-                                               name: .capacitorDidFailToRegisterForRemoteNotifications,
-                                               object: nil)
+                                            selector: #selector(self.didRegisterForRemoteNotificationsWithDeviceToken(notification:)),
+                                            name: .capacitorDidRegisterForRemoteNotifications,
+                                            object: nil)
+
+        NotificationCenter.default.addObserver(self,
+                                            selector: #selector(self.didFailToRegisterForRemoteNotificationsWithError(notification:)),
+                                            name: .capacitorDidFailToRegisterForRemoteNotifications,
+                                            object: nil)
     }
 
     deinit {
@@ -115,6 +122,7 @@ public class PushNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
             }
 
             call.resolve(["receive": result.rawValue])
+            self.acknowledgeService.setNotificationsEnabled(result == .granted ? true : false)
         }
     }
 
@@ -179,6 +187,21 @@ public class PushNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func listChannels(_ call: CAPPluginCall) {
         call.unimplemented("Not available on iOS")
+    }
+
+    @objc public func onBackgroundNotification(notification: Notification) {
+        NSLog("Receive background notification")
+        let data = notification.userInfo as? [String : Any] ?? ["something": "happened"]
+        let event: [String: Any] = [
+            "data": data
+        ]
+
+        let state = UIApplication.shared.applicationState
+        if state == .active {
+            self.notifyListeners("silentNotificationReceived", data: event, retainUntilConsumed: true);
+        }
+
+        self.acknowledgeService.newNotification(data);
     }
 
     @objc public func didRegisterForRemoteNotificationsWithDeviceToken(notification: NSNotification) {
