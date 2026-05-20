@@ -29,9 +29,14 @@ public class PushNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "listChannels", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "deleteChannel", returnType: CAPPluginReturnPromise)
     ]
+    static let pendingNotificationKey = "PushNotificationsPendingNotification"
+    static let lastFiredNotificationDateKey = "PushNotificationsLastFiredDate"
+
     private let notificationDelegateHandler = PushNotificationsHandler()
     private let acknowledgeService = AcknowledgeService()
     private var appDelegateRegistrationCalled: Bool = false
+    private var isFirstActive = true
+    var lastTapDate: Date?
 
     override public func load() {
         self.bridge?.notificationRouter.pushNotificationHandler = self.notificationDelegateHandler
@@ -51,6 +56,11 @@ public class PushNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
         NotificationCenter.default.addObserver(self,
                                             selector: #selector(self.didFailToRegisterForRemoteNotificationsWithError(notification:)),
                                             name: .capacitorDidFailToRegisterForRemoteNotifications,
+                                            object: nil)
+
+        NotificationCenter.default.addObserver(self,
+                                            selector: #selector(self.onAppBecomeActive),
+                                            name: UIApplication.didBecomeActiveNotification,
                                             object: nil)
     }
 
@@ -189,6 +199,60 @@ public class PushNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
         call.unimplemented("Not available on iOS")
     }
 
+    @objc private func onAppBecomeActive() {
+        let actionId = isFirstActive ? "start" : "resume"
+        isFirstActive = false
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if let tapDate = self.lastTapDate, Date().timeIntervalSince(tapDate) < 1.0 {
+                self.lastTapDate = nil
+                return
+            }
+            self.firePendingNotificationIfNeeded(actionId: actionId)
+        }
+    }
+
+    private func firePendingNotificationIfNeeded(actionId: String) {
+        guard getConfig().getBoolean("fireActionOnResume", false) else { return }
+
+        let defaults = UserDefaults.standard
+
+        // Path 1: silent/data notification stored by onBackgroundNotification (content-available: 1)
+        if let json = defaults.string(forKey: PushNotificationsPlugin.pendingNotificationKey),
+           let jsonData = json.data(using: .utf8),
+           let notificationDict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+            defaults.removeObject(forKey: PushNotificationsPlugin.pendingNotificationKey)
+            fireActionPerformed(actionId: actionId, notification: JSTypes.coerceDictionaryToJSObject(notificationDict) ?? JSObject())
+            return
+        }
+
+        // Path 2: display notification delivered to the notification center while app was in background
+        let lastFiredDate = Date(timeIntervalSince1970: defaults.double(forKey: PushNotificationsPlugin.lastFiredNotificationDateKey))
+
+        UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+            guard let latest = notifications
+                .filter({ $0.date > lastFiredDate })
+                .sorted(by: { $0.date > $1.date })
+                .first(where: {
+                    let userInfo = JSTypes.coerceDictionaryToJSObject($0.request.content.userInfo) ?? JSObject()
+                    return (userInfo["notificationTitle"] as? String).map { !$0.isEmpty } ?? false
+                }) else { return }
+
+            DispatchQueue.main.async {
+                defaults.set(Date().timeIntervalSince1970, forKey: PushNotificationsPlugin.lastFiredNotificationDateKey)
+                let notificationData = self.notificationDelegateHandler.makeNotificationRequestJSObject(latest.request)
+                self.fireActionPerformed(actionId: actionId, notification: notificationData)
+            }
+        }
+    }
+
+    func fireActionPerformed(actionId: String, notification: JSObject) {
+        var actionData = JSObject()
+        actionData["actionId"] = actionId
+        actionData["notification"] = notification
+        self.notifyListeners("pushNotificationActionPerformed", data: actionData, retainUntilConsumed: true)
+    }
+
     @objc public func onBackgroundNotification(notification: Notification) {
         NSLog("Receive background notification")
         let data = notification.userInfo as? [String : Any] ?? ["something": "happened"]
@@ -199,6 +263,14 @@ public class PushNotificationsPlugin: CAPPlugin, CAPBridgedPlugin {
         let state = UIApplication.shared.applicationState
         if state == .active {
             self.notifyListeners("silentNotificationReceived", data: event, retainUntilConsumed: true);
+        }
+
+        if state != .active,
+           let title = data["notificationTitle"] as? String, !title.isEmpty,
+           let jsonData = try? JSONSerialization.data(withJSONObject: ["data": data]),
+           let json = String(data: jsonData, encoding: .utf8) {
+            UserDefaults.standard.set(json, forKey: PushNotificationsPlugin.pendingNotificationKey)
+            NSLog("PushNotificationsPlugin: stored pending notification")
         }
 
         self.acknowledgeService.newNotification(data);

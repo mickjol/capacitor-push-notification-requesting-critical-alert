@@ -15,7 +15,7 @@ public class PushNotificationsHandler: NSObject, NotificationHandlerProtocol {
 
         UNUserNotificationCenter.current().requestAuthorization(options: requestAuthorizationOptions) { granted, error in
             if let error = error {
-                NSLog("An error occured \(error.localizedDescription)")
+                NSLog("An error occurred \(error.localizedDescription)")
             }
 
             UNUserNotificationCenter.current().getNotificationSettings { settings in
@@ -35,6 +35,11 @@ public class PushNotificationsHandler: NSObject, NotificationHandlerProtocol {
     public func willPresent(notification: UNNotification) -> UNNotificationPresentationOptions {
         let notificationData = makeNotificationRequestJSObject(notification.request)
         self.plugin?.notifyListeners("pushNotificationReceived", data: notificationData)
+
+        let userInfo = JSTypes.coerceDictionaryToJSObject(notification.request.content.userInfo) ?? JSObject()
+        if (userInfo["notificationTitle"] as? String).map({ !$0.isEmpty }) ?? false {
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: PushNotificationsPlugin.lastFiredNotificationDateKey)
+        }
 
         if let options = notificationRequestLookup[notification.request.identifier] {
             let silent = options["silent"] as? Bool ?? false
@@ -85,7 +90,15 @@ public class PushNotificationsHandler: NSObject, NotificationHandlerProtocol {
             data["inputValue"] = inputType.userText
         }
 
-        data["notification"] = makeNotificationRequestJSObject(originalNotificationRequest)
+        let notificationData = makeNotificationRequestJSObject(originalNotificationRequest)
+        data["notification"] = notificationData
+
+        UserDefaults.standard.removeObject(forKey: PushNotificationsPlugin.pendingNotificationKey)
+
+        if let pushPlugin = self.plugin as? PushNotificationsPlugin,
+           pushPlugin.getConfig().getBoolean("fireActionOnResume", false) {
+            pushPlugin.lastTapDate = Date()
+        }
 
         self.plugin?.notifyListeners("pushNotificationActionPerformed", data: data, retainUntilConsumed: true)
 
