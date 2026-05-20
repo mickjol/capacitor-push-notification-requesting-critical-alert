@@ -36,6 +36,7 @@ public class PushNotificationsPlugin extends Plugin {
     public NotificationManager notificationManager;
     public MessagingService firebaseMessagingService;
     private NotificationChannelManager notificationChannelManager;
+    private boolean isFirstResume = true;
 
     private static final String EVENT_TOKEN_CHANGE = "registration";
     private static final String EVENT_TOKEN_ERROR = "registrationError";
@@ -58,21 +59,63 @@ public class PushNotificationsPlugin extends Plugin {
         super.handleOnNewIntent(data);
         Bundle bundle = data.getExtras();
         if (bundle != null && bundle.containsKey("google.message_id")) {
-            JSObject notificationJson = new JSObject();
-            JSObject dataObject = new JSObject();
-            for (String key : bundle.keySet()) {
-                if (key.equals("google.message_id")) {
-                    notificationJson.put("id", bundle.getString(key));
-                } else {
-                    dataObject.put(key, bundle.get(key));
-                }
-            }
-            notificationJson.put("data", dataObject);
             JSObject actionJson = new JSObject();
             actionJson.put("actionId", "tap");
-            actionJson.put("notification", notificationJson);
+            actionJson.put("notification", buildNotificationJson(bundle));
             notifyListeners("pushNotificationActionPerformed", actionJson, true);
         }
+    }
+
+    @Override
+    protected void handleOnResume() {
+        super.handleOnResume();
+        String actionId = isFirstResume ? "start" : "resume";
+        isFirstResume = false;
+
+        if (!getConfig().getBoolean("fireActionOnResume", false)) return;
+
+        Intent intent = getActivity().getIntent();
+        Bundle bundle = intent != null ? intent.getExtras() : null;
+        Logger.debug("PushNotificationsPlugin", "App resumed with actionId: " + actionId);
+
+        if (bundle != null && bundle.containsKey("google.message_id")) {
+            JSObject actionJson = new JSObject();
+            actionJson.put("actionId", actionId);
+            actionJson.put("notification", buildNotificationJson(bundle));
+            notifyListeners("pushNotificationActionPerformed", actionJson, true);
+            getActivity().setIntent(new Intent());
+        } else {
+            android.content.SharedPreferences prefs = getContext()
+                .getSharedPreferences(MessagingService.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+            String json = prefs.getString(MessagingService.PREFS_KEY, null);
+            Logger.debug("PushNotificationsPlugin", "handleOnResume SharedPreferences pendingNotification = " + json);
+            if (json != null) {
+                try {
+                    JSObject notificationJson = new JSObject(json);
+                    JSObject actionJson = new JSObject();
+                    actionJson.put("actionId", actionId);
+                    actionJson.put("notification", notificationJson);
+                    notifyListeners("pushNotificationActionPerformed", actionJson, true);
+                    prefs.edit().remove(MessagingService.PREFS_KEY).apply();
+                } catch (org.json.JSONException e) {
+                    Logger.error("PushNotificationsPlugin", "Failed to parse pending notification", e);
+                }
+            }
+        }
+    }
+
+    private JSObject buildNotificationJson(Bundle bundle) {
+        JSObject notificationJson = new JSObject();
+        JSObject dataObject = new JSObject();
+        for (String key : bundle.keySet()) {
+            if (key.equals("google.message_id")) {
+                notificationJson.put("id", bundle.getString(key));
+            } else {
+                dataObject.put(key, bundle.get(key));
+            }
+        }
+        notificationJson.put("data", dataObject);
+        return notificationJson;
     }
 
     @PluginMethod
