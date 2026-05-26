@@ -63,6 +63,12 @@ public class PushNotificationsPlugin extends Plugin {
             actionJson.put("actionId", "tap");
             actionJson.put("notification", buildNotificationJson(bundle));
             notifyListeners("pushNotificationActionPerformed", actionJson, true);
+            getActivity().setIntent(new Intent());
+            getContext()
+                .getSharedPreferences(MessagingService.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                .edit()
+                .remove(MessagingService.PREFS_KEY)
+                .apply();
         }
     }
 
@@ -84,6 +90,11 @@ public class PushNotificationsPlugin extends Plugin {
             actionJson.put("notification", buildNotificationJson(bundle));
             notifyListeners("pushNotificationActionPerformed", actionJson, true);
             getActivity().setIntent(new Intent());
+            getContext()
+                .getSharedPreferences(MessagingService.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                .edit()
+                .remove(MessagingService.PREFS_KEY)
+                .apply();
         } else {
             android.content.SharedPreferences prefs = getContext()
                 .getSharedPreferences(MessagingService.PREFS_NAME, android.content.Context.MODE_PRIVATE);
